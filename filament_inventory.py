@@ -5,12 +5,12 @@ from oauth2client.service_account import ServiceAccountCredentials
 import json
 
 # Google Sheets setup
-def get_gsheet():
+def get_gsheet(sheet_name):
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds_dict = json.loads(st.secrets["GOOGLE_CREDENTIALS"])
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     client = gspread.authorize(creds)
-    sheet = client.open("3D Printer Inventory").worksheet("inventory")
+    sheet = client.open("3D Printer Inventory").worksheet(sheet_name)
     return sheet
 
 def load_data(sheet):
@@ -60,9 +60,6 @@ def main():
 
     st.markdown("<h1 style='text-align: center;'>🧵 3D Printer Inventory Tracker</h1>", unsafe_allow_html=True)
 
-    sheet = get_gsheet()
-    df = load_data(sheet)
-
     # Session state setup
     for key in ["selected_type", "selected_opened_id", "selected_unopened_id"]:
         if key not in st.session_state:
@@ -91,9 +88,13 @@ def main():
                 st.rerun()
         return
 
+    # Get sheet based on selected type
+    sheet = get_gsheet(st.session_state.selected_type)
+    df = load_data(sheet)
+
     # Load selected data
     selected_type = st.session_state.selected_type
-    filtered_df = df[df["type"] == selected_type].copy()
+    filtered_df = df[df["type"] == selected_type].copy() if not df.empty and "type" in df.columns else pd.DataFrame()
 
     if filtered_df.empty:
         opened = pd.DataFrame()
