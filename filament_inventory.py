@@ -116,23 +116,46 @@ def main():
                 st.rerun()
 
     def format_box(row):
-        return f"<div class='material-box' style='background:{row['color']}'>{row['material']}<br>{row['count']}<br>{row['color']}</div>"
+        return f"<div class='material-box' style='background:{row['color']}'>{row['material']}<br>{row['count']}<br>{row['color']}</div>", str(row['id'])
 
     with mid_raw:
         st.markdown("<h3>🟨 Opened</h3>", unsafe_allow_html=True)
         opened_html = [format_box(row) for _, row in opened.iterrows()]
-        sort_items("opened_zone", opened_html)
+        opened_html_content, opened_ids = zip(*opened_html) if opened_html else ([], [])
+        new_opened_order = sort_items("opened_zone", list(opened_html_content), header=None)
 
     with right_raw:
         st.markdown("<h3>🟩 Unopened</h3>", unsafe_allow_html=True)
         unopened_html = [format_box(row) for _, row in unopened.iterrows()]
-        sort_items("unopened_zone", unopened_html)
+        unopened_html_content, unopened_ids = zip(*unopened_html) if unopened_html else ([], [])
+        new_unopened_order = sort_items("unopened_zone", list(unopened_html_content), header=None)
 
     st.markdown("<h3>🗑️ Used</h3>", unsafe_allow_html=True)
     used_html = []
-    sort_items("used_zone", used_html)
+    sort_items("used_zone", used_html, header=None)
 
-    st.warning("Note: drag-to-update is visual only — backend actions must be added via tracking logic")
+    # Track updates: check if unopened item moved to opened
+    opened_html_to_id = dict(opened_html)
+    moved_to_opened_ids = [id_ for id_ in opened_html_to_id.values() if id_ not in unopened_ids and id_ not in opened_ids]
+
+    for moved_id in moved_to_opened_ids:
+        idx = df[df["id"] == int(moved_id)].index
+        if not idx.empty and df.at[idx[0], "status"] == "unopened":
+            df.at[idx[0], "status"] = "opened"
+
+    # Optional: Detect removed (used) items
+    all_known_ids = set(opened_ids + unopened_ids)
+    all_current_ids = set(opened_html_to_id.values())
+    used_ids = list(all_known_ids - all_current_ids)
+
+    for used_id in used_ids:
+        idx = df[df["id"] == int(used_id)].index
+        if not idx.empty:
+            df.at[idx[0], "count"] -= 1
+            if df.at[idx[0], "count"] <= 0:
+                df = df.drop(index=idx).reset_index(drop=True)
+
+    save_data(sheet, df)
 
 if __name__ == "__main__":
     main()
