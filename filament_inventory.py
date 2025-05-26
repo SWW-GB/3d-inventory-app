@@ -140,11 +140,7 @@ def main():
                     st.session_state.selected_unopened_id = None
                     st.rerun()
 
-                f"<div class='material-box{selected_class}' style='background:{row['color']};'>"
-                f"<div style='font-size:12px;'>{row['material']}</div>"
-                f"<div style='line-height:60px;font-size:24px;'>{row['count']}</div></div>",
-                unsafe_allow_html=True
-            )
+                
         if st.session_state.selected_opened_id:
             if st.button("Mark One as Used"):
                 idx = df[df["id"] == st.session_state.selected_opened_id].index[0]
