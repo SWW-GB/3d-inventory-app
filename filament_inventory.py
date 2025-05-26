@@ -128,16 +128,14 @@ def main():
         for _, row in opened.iterrows():
             selected = row['id'] == st.session_state.selected_opened_id
             box_html = f"""
-            <button style='all: unset;' type='submit' name='opened_id' value='{row['id']}'>
-                <div class='material-box{' selected-box' if selected else ''}' style='background:{row['color']};'>
-                    <div style='font-size:12px;'>{row['material']}</div>
-                    <div style='line-height:60px;font-size:24px;'>{row['count']}</div>
-                </div>
-            </button>
-            """
+<div class='material-box{' selected-box' if selected else ''}' style='background:{row['color']};'>
+    <div style='font-size:12px;'>{row['material']}</div>
+    <div style='line-height:60px;font-size:24px;'>{row['count']}</div>
+</div>
+"""
             with st.form(key=f"opened_form_{row['id']}"):
                 st.markdown(box_html, unsafe_allow_html=True)
-                submitted = st.form_submit_button(label="", key=f"submit_opened_{row['id']}")
+                submitted = st.form_submit_button("Select", key=f"submit_opened_{row['id']}")
                 if submitted:
                     st.session_state.selected_opened_id = row['id']
                     st.session_state.selected_unopened_id = None
@@ -156,16 +154,14 @@ def main():
         for _, row in unopened.iterrows():
             selected = row['id'] == st.session_state.selected_unopened_id
             box_html = f"""
-            <button style='all: unset;' type='submit' name='unopened_id' value='{row['id']}'>
-                <div class='material-box{' selected-box' if selected else ''}' style='background:{row['color']};'>
-                    <div style='font-size:12px;'>{row['material']}</div>
-                    <div style='line-height:60px;font-size:24px;'>{row['count']}</div>
-                </div>
-            </button>
-            """
+<div class='material-box{' selected-box' if selected else ''}' style='background:{row['color']};'>
+    <div style='font-size:12px;'>{row['material']}</div>
+    <div style='line-height:60px;font-size:24px;'>{row['count']}</div>
+</div>
+"""
             with st.form(key=f"unopened_form_{row['id']}"):
                 st.markdown(box_html, unsafe_allow_html=True)
-                submitted = st.form_submit_button(label="", key=f"submit_unopened_{row['id']}")
+                submitted = st.form_submit_button("Select", key=f"submit_unopened_{row['id']}")
                 if submitted:
                     st.session_state.selected_unopened_id = row['id']
                     st.session_state.selected_opened_id = None
