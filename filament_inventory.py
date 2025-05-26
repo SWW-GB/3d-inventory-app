@@ -47,6 +47,7 @@ def main():
             margin: 5px;
             padding: 5px;
             cursor: pointer;
+            background-color: lightgray;
         }
         .selected-box {
             outline: 3px solid black;
@@ -60,12 +61,10 @@ def main():
 
     st.markdown("<h1 style='text-align: center;'>🧵 3D Printer Inventory Tracker</h1>", unsafe_allow_html=True)
 
-    # Session state setup
     for key in ["selected_type", "selected_opened_id", "selected_unopened_id"]:
         if key not in st.session_state:
             st.session_state[key] = None
 
-    # Top navigation
     _, top_right = st.columns([8, 1])
     with top_right:
         with st.container():
@@ -75,7 +74,6 @@ def main():
                 st.session_state.selected_unopened_id = None
                 st.rerun()
 
-    # Home screen selection
     if st.session_state.selected_type is None:
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
@@ -90,11 +88,9 @@ def main():
                     st.rerun()
         return
 
-    # Get sheet based on selected type
     sheet = get_gsheet(st.session_state.selected_type)
     df = load_data(sheet)
 
-    # Load selected data
     selected_type = st.session_state.selected_type
     filtered_df = df[df["type"] == selected_type].copy() if not df.empty and "type" in df.columns else pd.DataFrame()
 
@@ -108,7 +104,6 @@ def main():
 
     left, middle, right = st.columns([1, 2, 2])
 
-    # Add New Material
     with left:
         st.markdown(f"### ➕ Add New {selected_type.title()}")
         with st.form("add_form"):
@@ -140,23 +135,21 @@ def main():
                 st.success("Material added successfully.")
                 st.rerun()
 
-    # Opened Section
     with middle:
         st.markdown("## 🟨 Opened")
         for i, row in opened.iterrows():
             selected = row['id'] == st.session_state.selected_opened_id
-            box_html = f"""
-<a href='?select_opened={row['id']}'><div class='material-box{' selected-box' if selected else ''}' style='background:{row['color']};'>
+            with st.form(key=f"opened_form_{i}"):
+                st.markdown(f"""
+<div class='material-box{' selected-box' if selected else ''}' style='background:{row['color']};'>
     <div style='font-size:12px;'>{row['material']}</div>
     <div style='line-height:60px;font-size:24px;'>{row['count']}</div>
-</div></a>
-"""
-            st.markdown(box_html, unsafe_allow_html=True)
-
-        if st.query_params.get("select_opened"):
-            st.session_state.selected_opened_id = int(st.query_params["select_opened"])
-            st.session_state.selected_unopened_id = None
-            st.rerun()
+</div>
+""", unsafe_allow_html=True)
+                if st.form_submit_button(" "):
+                    st.session_state.selected_opened_id = row['id']
+                    st.session_state.selected_unopened_id = None
+                    st.rerun()
 
         if st.session_state.selected_opened_id and st.button("Mark One as Used"):
             idx = df[df["id"] == st.session_state.selected_opened_id].index[0]
@@ -165,23 +158,21 @@ def main():
             st.session_state.selected_opened_id = None
             st.rerun()
 
-    # Unopened Section
     with right:
         st.markdown("## 🟩 Unopened")
         for i, row in unopened.iterrows():
             selected = row['id'] == st.session_state.selected_unopened_id
-            box_html = f"""
-<a href='?select_unopened={row['id']}'><div class='material-box{' selected-box' if selected else ''}' style='background:{row['color']};'>
+            with st.form(key=f"unopened_form_{i}"):
+                st.markdown(f"""
+<div class='material-box{' selected-box' if selected else ''}' style='background:{row['color']};'>
     <div style='font-size:12px;'>{row['material']}</div>
     <div style='line-height:60px;font-size:24px;'>{row['count']}</div>
-</div></a>
-"""
-            st.markdown(box_html, unsafe_allow_html=True)
-
-        if st.query_params.get("select_unopened"):
-            st.session_state.selected_unopened_id = int(st.query_params["select_unopened"])
-            st.session_state.selected_opened_id = None
-            st.rerun()
+</div>
+""", unsafe_allow_html=True)
+                if st.form_submit_button(" "):
+                    st.session_state.selected_unopened_id = row['id']
+                    st.session_state.selected_opened_id = None
+                    st.rerun()
 
         if st.session_state.selected_unopened_id and st.button("Mark One as Opened"):
             idx = df[df["id"] == st.session_state.selected_unopened_id].index[0]
