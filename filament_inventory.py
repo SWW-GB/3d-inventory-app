@@ -107,17 +107,21 @@ def main():
             count = st.number_input("Quantity", min_value=1, step=1)
             submitted = st.form_submit_button("Add Material")
             if submitted:
-                new_entry = {
-                    "id": len(df) + 1,
-                    "type": selected_type,
-                    "material": material_type,
-                    "brand": "",
-                    "color": color,
-                    "status": "unopened",
-                    "count": count,
-                    "notes": ""
-                }
-                df = pd.concat([df, pd.DataFrame([new_entry])], ignore_index=True)
+                match = df[(df["type"] == selected_type) & (df["material"] == material_type) & (df["color"] == color) & (df["status"] == "unopened")]
+                if not match.empty:
+                    df.at[match.index[0], "count"] += count
+                else:
+                    new_entry = {
+                        "id": len(df) + 1,
+                        "type": selected_type,
+                        "material": material_type,
+                        "brand": "",
+                        "color": color,
+                        "status": "unopened",
+                        "count": count,
+                        "notes": ""
+                    }
+                    df = pd.concat([df, pd.DataFrame([new_entry])], ignore_index=True)
                 save_data(sheet, df)
                 st.success("Material added successfully.")
                 st.rerun()
@@ -178,6 +182,15 @@ def main():
             if not match.empty:
                 df.at[match.index[0], "count"] += 1
             else:
+                new_opened = selected.copy()
+                new_opened["status"] = "opened"
+                new_opened["count"] = 1
+                new_opened["id"] = len(df) + 1
+                df = pd.concat([df, pd.DataFrame([new_opened])], ignore_index=True)
+            save_data(sheet, df[df["count"] > 0])
+            st.session_state.selected_unopened_id = None
+            st.session_state.selected_opened_id = None
+            st.rerun()
                 new_opened = selected.copy()
                 new_opened["status"] = "opened"
                 new_opened["count"] = 1
