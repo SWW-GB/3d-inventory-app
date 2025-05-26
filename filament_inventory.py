@@ -24,8 +24,9 @@ def save_data(sheet, df):
     for _, row in df.iterrows():
         sheet.append_row(row.tolist())
 
+st.set_page_config(layout="wide")
+
 def main():
-    st.set_page_config(layout="wide")
     st.markdown("""
         <style>
         .material-box {
