@@ -134,7 +134,7 @@ def main():
                 if df.at[idx, "count"] <= 0:
                     df = df.drop(index=idx).reset_index(drop=True)
                 save_data(sheet, df)
-                st.rerun())
+                st.rerun()
 
     with right_raw:
         st.markdown("<h3>🟩 Unopened</h3>", unsafe_allow_html=True)
