@@ -3,6 +3,7 @@ import pandas as pd
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import json
+from streamlit_sortables import sort_items
 
 # Google Sheets setup
 def get_gsheet():
@@ -27,8 +28,17 @@ def update_quantity(df, index, delta):
     df.at[index, "count"] += delta
     return df[df["count"] > 0]  # Remove if count becomes 0
 
+def color_block(color, count):
+    return f"""
+    <div style='background:{color};width:100px;height:100px;border-radius:10px;text-align:center;line-height:100px;font-weight:bold;margin:5px;'>
+        {count}
+    </div>
+    """
+
 def main():
-    st.title("🧵 3D Printer Filament & Resin Tracker")
+    st.set_page_config(layout="wide")
+    st.title("🧵 3D Printer Inventory Tracker")
+
     sheet = get_gsheet()
     df = load_data(sheet)
 
@@ -48,53 +58,56 @@ def main():
         return
 
     selected_type = st.session_state.selected_type
-    st.subheader(f"📦 Current Inventory: {selected_type.title()}")
-    filtered_df = df[df["type"] == selected_type]
-
-    if st.button(f"➕ Add New {selected_type.title()}"):
-        with st.form("add_form"):
-            new_entry = {
-                "id": len(df) + 1,
-                "type": selected_type,
-                "material": st.text_input("Material"),
-                "brand": st.text_input("Brand"),
-                "color": st.text_input("Color"),
-                "status": st.selectbox("Status", ["unopened", "opened"]),
-                "count": st.number_input("Count", min_value=1, step=1),
-                "notes": st.text_input("Notes")
-            }
-            submitted = st.form_submit_button("Add Material")
-            if submitted:
-                df = pd.concat([df, pd.DataFrame([new_entry])], ignore_index=True)
-                save_data(sheet, df)
-                st.success("Material added successfully.")
-                st.rerun()
-
-    # Sections
+    filtered_df = df[df["type"] == selected_type].copy()
     opened = filtered_df[filtered_df["status"] == "opened"].reset_index()
     unopened = filtered_df[filtered_df["status"] == "unopened"].reset_index()
 
-    st.markdown("## 🟨 Opened")
-    for _, row in opened.iterrows():
-        with st.container():
-            st.markdown(f"**{row['material']} ({row['color']}) - {row['brand']}**: {row['count']}x")
-            if st.button(f"✅ Mark One Used - ID {row['id']}", key=f"used_{row['id']}"):
+    left, middle, right = st.columns([1, 2, 2])
+
+    with left:
+        if st.button(f"➕ Add New {selected_type.title()}"):
+            with st.form("add_form"):
+                if selected_type == "filament":
+                    f_type = st.selectbox("Type", ["PLA", "PETG", "ABS", "Support", "TPU", "PLA-CF", "PETG-CF"], index=0)
+                else:
+                    f_type = st.selectbox("Type", ["basic", "tough", "rigid", "flexible"], index=0)
+                color = st.text_input("Color")
+                count = st.number_input("Quantity", min_value=1, step=1)
+                submitted = st.form_submit_button("Add Material")
+                if submitted:
+                    new_entry = {
+                        "id": len(df) + 1,
+                        "type": selected_type,
+                        "material": f_type,
+                        "brand": "",
+                        "color": color,
+                        "status": "unopened",
+                        "count": count,
+                        "notes": ""
+                    }
+                    df = pd.concat([df, pd.DataFrame([new_entry])], ignore_index=True)
+                    save_data(sheet, df)
+                    st.success("Material added successfully.")
+                    st.rerun()
+
+    with middle:
+        st.markdown("## 🟨 Opened")
+        for _, row in opened.iterrows():
+            st.markdown(color_block(row["color"], row["count"]), unsafe_allow_html=True)
+            if st.button(f"🗑️ Mark One Used - ID {row['id']}", key=f"used_{row['id']}"):
                 df = update_quantity(df, row["index"], -1)
                 save_data(sheet, df)
                 st.rerun()
 
-    st.markdown("## 🟩 Unopened")
-    for _, row in unopened.iterrows():
-        with st.container():
-            st.markdown(f"**{row['material']} ({row['color']}) - {row['brand']}**: {row['count']}x")
+    with right:
+        st.markdown("## 🟩 Unopened")
+        for _, row in unopened.iterrows():
+            st.markdown(color_block(row["color"], row["count"]), unsafe_allow_html=True)
             if st.button(f"📤 Open One - ID {row['id']}", key=f"open_{row['id']}"):
-                # Reduce unopened
                 df = update_quantity(df, row["index"], -1)
-                # Find match to add to opened
                 match = df[
                     (df["type"] == row["type"]) &
                     (df["material"] == row["material"]) &
-                    (df["brand"] == row["brand"]) &
                     (df["color"] == row["color"]) &
                     (df["status"] == "opened")
                 ]
@@ -110,5 +123,18 @@ def main():
                 save_data(sheet, df)
                 st.rerun()
 
+    st.markdown("""
+        <style>
+        div[role="button"] button {
+            margin: 4px;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    if st.button("🔙 Go Back"):
+        st.session_state.selected_type = None
+        st.rerun()
+
 if __name__ == "__main__":
     main()
+
