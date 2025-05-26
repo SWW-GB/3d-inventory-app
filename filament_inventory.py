@@ -52,13 +52,13 @@ def main():
             outline: 3px solid black;
         }
         .go-back-button button {
-            padding: 6px 12px !important;
-            font-size: 16px !important;
+            padding: 4px 10px !important;
+            font-size: 14px !important;
         }
         .column-divider {
             border-right: 2px solid #ccc;
-            height: 100%;
             padding-right: 20px;
+            min-height: 100%;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -71,7 +71,7 @@ def main():
 
     _, top_right = st.columns([8, 1])
     with top_right:
-        if st.session_state.selected_type and st.button("🔙 Go Back", key="go_back"):
+        if st.session_state.selected_type and st.button("🔙 Go Back", key="go_back", help="Return to main menu"):
             st.session_state.selected_type = None
             st.session_state.selected_opened_id = None
             st.session_state.selected_unopened_id = None
