@@ -125,7 +125,7 @@ def main():
     # Opened Section
     with middle:
         st.markdown("## 🟨 Opened")
-        for _, row in opened.iterrows():
+        for i, row in opened.iterrows():
             selected = row['id'] == st.session_state.selected_opened_id
             box_html = f"""
 <div class='material-box{' selected-box' if selected else ''}' style='background:{row['color']};'>
@@ -133,7 +133,7 @@ def main():
     <div style='line-height:60px;font-size:24px;'>{row['count']}</div>
 </div>
 """
-            with st.form(key=f"opened_form_{row['id']}"):
+            with st.form(key=f"opened_form_{i}"):
                 st.markdown(box_html, unsafe_allow_html=True)
                 submitted = st.form_submit_button("Select")
                 if submitted:
@@ -151,7 +151,7 @@ def main():
     # Unopened Section
     with right:
         st.markdown("## 🟩 Unopened")
-        for _, row in unopened.iterrows():
+        for i, row in unopened.iterrows():
             selected = row['id'] == st.session_state.selected_unopened_id
             box_html = f"""
 <div class='material-box{' selected-box' if selected else ''}' style='background:{row['color']};'>
@@ -159,7 +159,7 @@ def main():
     <div style='line-height:60px;font-size:24px;'>{row['count']}</div>
 </div>
 """
-            with st.form(key=f"unopened_form_{row['id']}"):
+            with st.form(key=f"unopened_form_{i}"):
                 st.markdown(box_html, unsafe_allow_html=True)
                 submitted = st.form_submit_button("Select")
                 if submitted:
