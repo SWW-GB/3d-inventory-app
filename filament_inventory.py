@@ -27,10 +27,11 @@ def update_quantity(df, index, delta):
     df.at[index, "count"] += delta
     return df[df["count"] > 0]
 
-def render_color_block(item_id, color, count):
+def render_color_block(item_id, color, count, material):
     return f"""
-    <div class='draggable' draggable='true' data-id='{item_id}' style='background:{color};width:100px;height:100px;border-radius:10px;text-align:center;line-height:100px;font-weight:bold;margin:5px;'>
-        {count}
+    <div class='draggable' draggable='true' data-id='{item_id}' style='background:{color};border:1px solid #000;width:100px;height:100px;border-radius:10px;text-align:center;font-weight:bold;margin:5px;padding:5px;'>
+        <div style='font-size:12px;'>{material}</div>
+        <div style='line-height:60px;font-size:24px;'>{count}</div>
     </div>
     """
 
@@ -134,13 +135,13 @@ def main():
     middle.markdown("## 🟨 Opened")
     middle.markdown(f"<div class='droppable' data-target='used'>", unsafe_allow_html=True)
     for _, row in opened.iterrows():
-        middle.markdown(render_color_block(f"opened_{row['id']}", row["color"], row["count"]), unsafe_allow_html=True)
+        middle.markdown(render_color_block(f"opened_{row['id']}", row["color"], row["count"], row["material"]), unsafe_allow_html=True)
     middle.markdown("</div>", unsafe_allow_html=True)
 
     right.markdown("## 🟩 Unopened")
     right.markdown(f"<div class='droppable' data-target='opened'>", unsafe_allow_html=True)
     for _, row in unopened.iterrows():
-        right.markdown(render_color_block(f"unopened_{row['id']}", row["color"], row["count"]), unsafe_allow_html=True)
+        right.markdown(render_color_block(f"unopened_{row['id']}", row["color"], row["count"], row["material"]), unsafe_allow_html=True)
     right.markdown("</div>", unsafe_allow_html=True)
 
     # Handle drag-and-drop interaction
@@ -171,7 +172,7 @@ def main():
             row = opened[opened["id"] == item_id].iloc[0]
             df = update_quantity(df, row["index"], -1)
             save_data(sheet, df)
-            st.experimental_set_query_params()
+            st.query_params.clear()
             st.rerun()
 
 if __name__ == "__main__":
