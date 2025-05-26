@@ -3,7 +3,7 @@ import pandas as pd
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import json
-from streamlit_dnd import dnd_zone
+from streamlit_sortables import sort_items
 
 # Google Sheets setup
 def get_gsheet(sheet_name):
@@ -122,17 +122,17 @@ def main():
         st.markdown("<h3>🟨 Opened</h3>", unsafe_allow_html=True)
         opened_html = [format_box(row) for _, row in opened.iterrows()]
         opened_html_content, opened_ids = zip(*opened_html) if opened_html else ([], [])
-        new_opened_order = dnd_zone("opened_zone", list(opened_html_content), height=300)
+        new_opened_order = sort_items(items=list(opened_html_content), multi_containers=False, header="Opened")
 
     with right_raw:
         st.markdown("<h3>🟩 Unopened</h3>", unsafe_allow_html=True)
         unopened_html = [format_box(row) for _, row in unopened.iterrows()]
         unopened_html_content, unopened_ids = zip(*unopened_html) if unopened_html else ([], [])
-        new_unopened_order = dnd_zone("unopened_zone", list(unopened_html_content), height=300)
+        new_unopened_order = sort_items(items=list(unopened_html_content), multi_containers=False, header="Unopened")
 
     st.markdown("<h3>🗑️ Used</h3>", unsafe_allow_html=True)
     used_html = []
-    dnd_zone("used_zone", used_html, height=150)
+    sort_items(items=used_html, multi_containers=False, header="Used")
 
     # Track updates: check if unopened item moved to opened
     opened_html_to_id = dict(opened_html)
