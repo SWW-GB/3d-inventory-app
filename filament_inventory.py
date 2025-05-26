@@ -55,6 +55,10 @@ def main():
             padding: 6px 12px !important;
             font-size: 16px !important;
         }
+        .column-divider {
+            border-right: 2px solid lightgray;
+            padding-right: 10px;
+        }
         </style>
     """, unsafe_allow_html=True)
 
@@ -101,9 +105,9 @@ def main():
         opened = filtered_df[filtered_df["status"] == "opened"].reset_index()
         unopened = filtered_df[filtered_df["status"] == "unopened"].reset_index()
 
-    left, middle, right = st.columns([1, 2, 2])
+    col_left, col_middle, col_right = st.columns([1, 2, 2])
 
-    with left:
+    with col_left:
         st.markdown(f"### ➕ Add New {selected_type.title()}")
         with st.form("add_form"):
             material_type = st.selectbox(
@@ -135,9 +139,10 @@ def main():
                 st.rerun()
 
     def display_material_grid(dataframe, status):
-        cols = st.columns(3)
+        cols = st.columns([1, 0.02, 1, 0.02, 1])
+        col_blocks = [cols[0], cols[2], cols[4]]
         for i, row in dataframe.iterrows():
-            col = cols[i % 3]
+            col = col_blocks[i % 3]
             with col:
                 if st.button(
                     label=f"\n\n\n",
@@ -158,7 +163,7 @@ def main():
 </div>
 """, unsafe_allow_html=True)
 
-    with middle:
+    with col_middle:
         st.markdown("## 🟨 Opened")
         display_material_grid(opened, "opened")
         if st.session_state.selected_opened_id and st.button("Mark One as Used"):
@@ -168,7 +173,7 @@ def main():
             st.session_state.selected_opened_id = None
             st.rerun()
 
-    with right:
+    with col_right:
         st.markdown("## 🟩 Unopened")
         display_material_grid(unopened, "unopened")
         if st.session_state.selected_unopened_id and st.button("Mark One as Opened"):
