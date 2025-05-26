@@ -120,42 +120,53 @@ def main():
 
     with mid_raw:
         st.markdown("<h3>🟨 Opened</h3>", unsafe_allow_html=True)
-        opened_html = [format_box(row) for _, row in opened.iterrows()]
-        opened_html_content, opened_ids = zip(*opened_html) if opened_html else ([], [])
-        new_opened_order = sort_items(items=list(opened_html_content), multi_containers=False, header="Opened")
+        for _, row in opened.iterrows():
+            st.markdown(f"""
+            <div class='material-box' style='background:{row['color']};'>
+                <div>{row['material']}</div>
+                <div>{row['count']}</div>
+                <div>{row['color']}</div>
+            </div>
+            """, unsafe_allow_html=True)
+            if st.button(f"Mark one as used ({row['material']} - {row['color']})", key=f"use_{row['id']}"):
+                idx = df[df["id"] == row["id"]].index[0]
+                df.at[idx, "count"] -= 1
+                if df.at[idx, "count"] <= 0:
+                    df = df.drop(index=idx).reset_index(drop=True)
+                save_data(sheet, df)
+                st.rerun(), multi_containers=False, header="Opened")
 
     with right_raw:
         st.markdown("<h3>🟩 Unopened</h3>", unsafe_allow_html=True)
-        unopened_html = [format_box(row) for _, row in unopened.iterrows()]
-        unopened_html_content, unopened_ids = zip(*unopened_html) if unopened_html else ([], [])
-        new_unopened_order = sort_items(items=list(unopened_html_content), multi_containers=False, header="Unopened")
+        for _, row in unopened.iterrows():
+            st.markdown(f"""
+            <div class='material-box' style='background:{row['color']};'>
+                <div>{row['material']}</div>
+                <div>{row['count']}</div>
+                <div>{row['color']}</div>
+            </div>
+            """, unsafe_allow_html=True)
+            if st.button(f"Mark one as opened ({row['material']} - {row['color']})", key=f"open_{row['id']}"):
+                idx = df[df["id"] == row["id"]].index[0]
+                df.at[idx, "count"] -= 1
+                if df.at[idx, "count"] <= 0:
+                    df = df.drop(index=idx).reset_index(drop=True)
+                match = df[(df["type"] == row["type"]) & (df["material"] == row["material"]) & (df["color"] == row["color"]) & (df["status"] == "opened")]
+                if not match.empty:
+                    df.at[match.index[0], "count"] += 1
+                else:
+                    new_row = row.copy()
+                    new_row["status"] = "opened"
+                    new_row["count"] = 1
+                    new_row["id"] = df["id"].max() + 1
+                    df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+                save_data(sheet, df)
+                st.rerun(), multi_containers=False, header="Unopened")
 
     st.markdown("<h3>🗑️ Used</h3>", unsafe_allow_html=True)
-    used_html = []
-    sort_items(items=used_html, multi_containers=False, header="Used")
+st.info("Items are marked as used when quantity reaches 0.")
 
-    # Track updates: check if unopened item moved to opened
-    opened_html_to_id = dict(opened_html)
-    moved_to_opened_ids = [id_ for id_ in opened_html_to_id.values() if id_ not in unopened_ids and id_ not in opened_ids]
-
-    for moved_id in moved_to_opened_ids:
-        idx = df[df["id"] == int(moved_id)].index
-        if not idx.empty and df.at[idx[0], "status"] == "unopened":
-            df.at[idx[0], "status"] = "opened"
-
-    # Optional: Detect removed (used) items
-    all_known_ids = set(opened_ids + unopened_ids)
-    all_current_ids = set(opened_html_to_id.values())
-    used_ids = list(all_known_ids - all_current_ids)
-
-    for used_id in used_ids:
-        idx = df[df["id"] == int(used_id)].index
-        if not idx.empty:
-            df.at[idx[0], "count"] -= 1
-            if df.at[idx[0], "count"] <= 0:
-                df = df.drop(index=idx).reset_index(drop=True)
-
-    save_data(sheet, df)
+    
 
 if __name__ == "__main__":
     main()
