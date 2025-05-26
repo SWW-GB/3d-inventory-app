@@ -142,19 +142,20 @@ def main():
         for row in rows:
             cols = st.columns(3)
             for box_data, col in zip(row.iterrows(), cols):
-                i, row = box_data
+                i, material = box_data
+                selected = material['id'] == st.session_state.get(f'selected_{status}_id')
+                btn_label = f"""
+                    <div class='material-box{' selected-box' if selected else ''}' style='background:{material['color']};'>
+                        <div style='font-size:12px;'>{material['material']}</div>
+                        <div style='font-size:24px; line-height:32px;'>{material['count']}</div>
+                        <div style='font-size:10px;'>{material['color']}</div>
+                    </div>
+                """
                 with col:
-                    if st.button(" ", key=f"{status}_btn_{row['id']}"):
-                        st.session_state.selected_opened_id = row['id'] if status == "opened" else None
-                        st.session_state.selected_unopened_id = row['id'] if status == "unopened" else None
+                    if st.button(btn_label, key=f"{status}_box_{material['id']}", help="Click to select", use_container_width=True):
+                        st.session_state.selected_opened_id = material['id'] if status == "opened" else None
+                        st.session_state.selected_unopened_id = material['id'] if status == "unopened" else None
                         st.rerun()
-                    st.markdown(f"""
-<div class='material-box{' selected-box' if row['id'] == st.session_state.get(f'selected_{status}_id') else ''}' style='background:{row['color']};'>
-    <div style='font-size:12px;'>{row['material']}</div>
-    <div style='font-size:24px; line-height:32px;'>{row['count']}</div>
-    <div style='font-size:10px;'>{row['color']}</div>
-</div>
-""", unsafe_allow_html=True)
 
     with mid_raw:
         st.markdown("<div class='column-divider'><h3>🟨 Opened</h3>", unsafe_allow_html=True)
