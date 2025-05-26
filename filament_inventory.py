@@ -161,7 +161,7 @@ def main():
                     new_row["id"] = df["id"].max() + 1
                     df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
                 save_data(sheet, df)
-                st.rerun())
+                st.rerun()
 
     st.markdown("<h3>🗑️ Used</h3>", unsafe_allow_html=True)
 st.info("Items are marked as used when quantity reaches 0.")
