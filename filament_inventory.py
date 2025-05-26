@@ -3,7 +3,7 @@ import pandas as pd
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import json
-from streamlit_sortables import sort_items
+from streamlit_dnd import dnd_area, dnd_label
 
 # Google Sheets setup
 def get_gsheet():
@@ -26,14 +26,14 @@ def save_data(sheet, df):
 
 def update_quantity(df, index, delta):
     df.at[index, "count"] += delta
-    return df[df["count"] > 0]  # Remove if count becomes 0
+    return df[df["count"] > 0]
 
-def color_block(color, count):
-    return f"""
-    <div style='background:{color};width:100px;height:100px;border-radius:10px;text-align:center;line-height:100px;font-weight:bold;margin:5px;'>
-        {count}
-    </div>
-    """
+def color_block(color, count, label):
+    return dnd_label(
+        label,
+        children=f"<div style='background:{color};width:100px;height:100px;border-radius:10px;text-align:center;line-height:100px;font-weight:bold;margin:5px;'>{count}</div>",
+        height=110,
+    )
 
 def main():
     st.set_page_config(layout="wide")
@@ -96,46 +96,47 @@ def main():
                 st.success("Material added successfully.")
                 st.rerun()
 
-    with middle:
-        st.markdown("## 🟨 Opened")
-        for _, row in opened.iterrows():
-            st.markdown(color_block(row["color"], row["count"]), unsafe_allow_html=True)
-            if st.button(f"🗑️ Mark One Used - ID {row['id']}", key=f"used_{row['id']}"):
-                df = update_quantity(df, row["index"], -1)
-                save_data(sheet, df)
-                st.rerun()
-
     with right:
         st.markdown("## 🟩 Unopened")
-        for _, row in unopened.iterrows():
-            st.markdown(color_block(row["color"], row["count"]), unsafe_allow_html=True)
-            if st.button(f"📤 Open One - ID {row['id']}", key=f"open_{row['id']}"):
-                df = update_quantity(df, row["index"], -1)
-                match = df[
-                    (df["type"] == row["type"]) &
-                    (df["material"] == row["material"]) &
-                    (df["color"] == row["color"]) &
-                    (df["status"] == "opened")
-                ]
-                if not match.empty:
-                    idx = match.index[0]
-                    df.at[idx, "count"] += 1
-                else:
-                    new_row = row.copy()
-                    new_row["status"] = "opened"
-                    new_row["count"] = 1
-                    new_row["id"] = len(df) + 1
-                    df = pd.concat([df, pd.DataFrame([new_row.drop(labels=["index"])])], ignore_index=True)
-                save_data(sheet, df)
-                st.rerun()
+        with dnd_area("Unopened", background_color="#e0ffe0") as unopened_area:
+            for _, row in unopened.iterrows():
+                label = f"unopened_{row['id']}"
+                color_block(row["color"], row["count"], label)
 
-    st.markdown("""
-        <style>
-        div[role="button"] button {
-            margin: 4px;
-        }
-        </style>
-    """, unsafe_allow_html=True)
+    with middle:
+        st.markdown("## 🟨 Opened")
+        with dnd_area("Opened", background_color="#ffffcc") as opened_area:
+            for _, row in opened.iterrows():
+                label = f"opened_{row['id']}"
+                color_block(row["color"], row["count"], label)
+
+        st.markdown("## 🗑️ Used")
+        with dnd_area("Used", background_color="#f0f0f0") as used_area:
+            st.write("Drop opened items here to mark them as used.")
+
+    # Handle drop logic
+    if unopened_area and unopened_area.startswith("unopened_"):
+        item_id = int(unopened_area.split("_")[1])
+        row = unopened[unopened["id"] == item_id].iloc[0]
+        df = update_quantity(df, row["index"], -1)
+        match = df[(df["type"] == row["type"]) & (df["material"] == row["material"]) & (df["color"] == row["color"]) & (df["status"] == "opened")]
+        if not match.empty:
+            df.at[match.index[0], "count"] += 1
+        else:
+            new_row = row.copy()
+            new_row["status"] = "opened"
+            new_row["count"] = 1
+            new_row["id"] = len(df) + 1
+            df = pd.concat([df, pd.DataFrame([new_row.drop(labels=["index"])])], ignore_index=True)
+        save_data(sheet, df)
+        st.rerun()
+
+    if used_area and used_area.startswith("opened_"):
+        item_id = int(used_area.split("_")[1])
+        row = opened[opened["id"] == item_id].iloc[0]
+        df = update_quantity(df, row["index"], -1)
+        save_data(sheet, df)
+        st.rerun()
 
 if __name__ == "__main__":
     main()
