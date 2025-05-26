@@ -3,7 +3,7 @@ import pandas as pd
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import json
-from streamlit_dragzone import dragzone
+from streamlit_sortables import sort_items
 
 # Google Sheets setup
 def get_gsheet(sheet_name):
@@ -115,62 +115,24 @@ def main():
                 st.success("Material added successfully.")
                 st.rerun()
 
-    def material_to_dragitem(row):
-        return {
-            "id": str(row["id"]),
-            "child": f"""
-            <div class='material-box' style='background:{row['color']}'>
-                <div>{row['material']}</div>
-                <div>{row['count']}</div>
-                <div>{row['color']}</div>
-            </div>
-            """
-        }
+    def format_box(row):
+        return f"<div class='material-box' style='background:{row['color']}'>{row['material']}<br>{row['count']}<br>{row['color']}</div>"
 
     with mid_raw:
         st.markdown("<h3>🟨 Opened</h3>", unsafe_allow_html=True)
-        opened_items = [material_to_dragitem(row) for _, row in opened.iterrows()]
-        opened_zone = dragzone("opened_zone", items=opened_items)
+        opened_html = [format_box(row) for _, row in opened.iterrows()]
+        sort_items("opened_zone", opened_html)
 
     with right_raw:
         st.markdown("<h3>🟩 Unopened</h3>", unsafe_allow_html=True)
-        unopened_items = [material_to_dragitem(row) for _, row in unopened.iterrows()]
-        unopened_zone = dragzone("unopened_zone", items=unopened_items)
+        unopened_html = [format_box(row) for _, row in unopened.iterrows()]
+        sort_items("unopened_zone", unopened_html)
 
     st.markdown("<h3>🗑️ Used</h3>", unsafe_allow_html=True)
-    used_zone = dragzone("used_zone")
+    used_html = []
+    sort_items("used_zone", used_html)
 
-    # Handle just dropped
-    if unopened_zone.get("just_dropped"):
-        dropped_id = int(unopened_zone["just_dropped"]["id"])
-        idx = df[df["id"] == dropped_id].index[0]
-        df.at[idx, "count"] -= 1
-        if df.at[idx, "count"] < 0:
-            df.at[idx, "count"] = 0
-        selected = df.loc[idx]
-        match = df[(df["type"] == selected["type"]) &
-                   (df["material"] == selected["material"]) &
-                   (df["color"] == selected["color"]) &
-                   (df["status"] == "opened")]
-        if not match.empty:
-            df.at[match.index[0], "count"] += 1
-        else:
-            new_opened = selected.copy()
-            new_opened["status"] = "opened"
-            new_opened["count"] = 1
-            new_opened["id"] = len(df) + 1
-            df = pd.concat([df, pd.DataFrame([new_opened])], ignore_index=True)
-        save_data(sheet, df)
-        st.rerun()
-
-    if used_zone.get("just_dropped"):
-        dropped_id = int(used_zone["just_dropped"]["id"])
-        idx = df[df["id"] == dropped_id].index[0]
-        df.at[idx, "count"] -= 1
-        if df.at[idx, "count"] <= 0:
-            df = df.drop(index=idx).reset_index(drop=True)
-        save_data(sheet, df)
-        st.rerun()
+    st.warning("Note: drag-to-update is visual only — backend actions must be added via tracking logic")
 
 if __name__ == "__main__":
     main()

@@ -2,4 +2,4 @@ streamlit
 gspread
 oauth2client
 pandas
-git+https://github.com/pablocfonseca/streamlit-dragzone.git
+streamlit-sortables
