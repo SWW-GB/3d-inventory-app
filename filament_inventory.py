@@ -134,7 +134,7 @@ def main():
                 if df.at[idx, "count"] <= 0:
                     df = df.drop(index=idx).reset_index(drop=True)
                 save_data(sheet, df)
-                st.rerun(), multi_containers=False, header="Opened")
+                st.rerun())
 
     with right_raw:
         st.markdown("<h3>🟩 Unopened</h3>", unsafe_allow_html=True)
@@ -161,7 +161,7 @@ def main():
                     new_row["id"] = df["id"].max() + 1
                     df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
                 save_data(sheet, df)
-                st.rerun(), multi_containers=False, header="Unopened")
+                st.rerun())
 
     st.markdown("<h3>🗑️ Used</h3>", unsafe_allow_html=True)
 st.info("Items are marked as used when quantity reaches 0.")
