@@ -36,6 +36,11 @@ def main():
             font-size: 32px !important;
             padding: 30px 60px !important;
         }
+        .material-box-button {
+            background: none;
+            border: none;
+            padding: 0;
+        }
         .material-box {
             display: inline-block;
             border: 1px solid #000;
@@ -47,7 +52,6 @@ def main():
             margin: 5px;
             padding: 5px;
             cursor: pointer;
-            background-color: lightgray;
         }
         .selected-box {
             outline: 3px solid black;
@@ -139,17 +143,23 @@ def main():
         st.markdown("## 🟨 Opened")
         for i, row in opened.iterrows():
             selected = row['id'] == st.session_state.selected_opened_id
-            with st.form(key=f"opened_form_{i}"):
-                st.markdown(f"""
+            button_clicked = st.button(
+                label=f" ",
+                key=f"opened_button_{row['id']}",
+                help=f"{row['material']} - {row['color']}",
+                args=(row['id'],),
+                use_container_width=True
+            )
+            st.markdown(f"""
 <div class='material-box{' selected-box' if selected else ''}' style='background:{row['color']};'>
     <div style='font-size:12px;'>{row['material']}</div>
     <div style='line-height:60px;font-size:24px;'>{row['count']}</div>
 </div>
 """, unsafe_allow_html=True)
-                if st.form_submit_button(" "):
-                    st.session_state.selected_opened_id = row['id']
-                    st.session_state.selected_unopened_id = None
-                    st.rerun()
+            if button_clicked:
+                st.session_state.selected_opened_id = row['id']
+                st.session_state.selected_unopened_id = None
+                st.rerun()
 
         if st.session_state.selected_opened_id and st.button("Mark One as Used"):
             idx = df[df["id"] == st.session_state.selected_opened_id].index[0]
@@ -162,17 +172,23 @@ def main():
         st.markdown("## 🟩 Unopened")
         for i, row in unopened.iterrows():
             selected = row['id'] == st.session_state.selected_unopened_id
-            with st.form(key=f"unopened_form_{i}"):
-                st.markdown(f"""
+            button_clicked = st.button(
+                label=f" ",
+                key=f"unopened_button_{row['id']}",
+                help=f"{row['material']} - {row['color']}",
+                args=(row['id'],),
+                use_container_width=True
+            )
+            st.markdown(f"""
 <div class='material-box{' selected-box' if selected else ''}' style='background:{row['color']};'>
     <div style='font-size:12px;'>{row['material']}</div>
     <div style='line-height:60px;font-size:24px;'>{row['count']}</div>
 </div>
 """, unsafe_allow_html=True)
-                if st.form_submit_button(" "):
-                    st.session_state.selected_unopened_id = row['id']
-                    st.session_state.selected_opened_id = None
-                    st.rerun()
+            if button_clicked:
+                st.session_state.selected_unopened_id = row['id']
+                st.session_state.selected_opened_id = None
+                st.rerun()
 
         if st.session_state.selected_unopened_id and st.button("Mark One as Opened"):
             idx = df[df["id"] == st.session_state.selected_unopened_id].index[0]
