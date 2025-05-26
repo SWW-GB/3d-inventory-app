@@ -3,7 +3,6 @@ import pandas as pd
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import json
-from streamlit_dnd import dnd_area, dnd_label
 
 # Google Sheets setup
 def get_gsheet():
@@ -28,12 +27,12 @@ def update_quantity(df, index, delta):
     df.at[index, "count"] += delta
     return df[df["count"] > 0]
 
-def color_block(color, count, label):
-    return dnd_label(
-        label,
-        children=f"<div style='background:{color};width:100px;height:100px;border-radius:10px;text-align:center;line-height:100px;font-weight:bold;margin:5px;'>{count}</div>",
-        height=110,
-    )
+def render_color_block(item_id, color, count):
+    return f"""
+    <div class='draggable' draggable='true' data-id='{item_id}' style='background:{color};width:100px;height:100px;border-radius:10px;text-align:center;line-height:100px;font-weight:bold;margin:5px;'>
+        {count}
+    </div>
+    """
 
 def main():
     st.set_page_config(layout="wide")
@@ -96,47 +95,84 @@ def main():
                 st.success("Material added successfully.")
                 st.rerun()
 
-    with right:
-        st.markdown("## 🟩 Unopened")
-        with dnd_area("Unopened", background_color="#e0ffe0") as unopened_area:
-            for _, row in unopened.iterrows():
-                label = f"unopened_{row['id']}"
-                color_block(row["color"], row["count"], label)
+    st.markdown("""
+    <style>
+    .droppable {
+        min-height: 200px;
+        border: 2px dashed #ccc;
+        padding: 10px;
+        margin-bottom: 20px;
+    }
+    .draggable {
+        cursor: grab;
+    }
+    </style>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const draggables = document.querySelectorAll('.draggable');
+        const droppables = document.querySelectorAll('.droppable');
 
-    with middle:
-        st.markdown("## 🟨 Opened")
-        with dnd_area("Opened", background_color="#ffffcc") as opened_area:
-            for _, row in opened.iterrows():
-                label = f"opened_{row['id']}"
-                color_block(row["color"], row["count"], label)
+        draggables.forEach(el => {
+            el.addEventListener('dragstart', e => {
+                e.dataTransfer.setData('text/plain', e.target.dataset.id);
+            });
+        });
 
-        st.markdown("## 🗑️ Used")
-        with dnd_area("Used", background_color="#f0f0f0") as used_area:
-            st.write("Drop opened items here to mark them as used.")
+        droppables.forEach(area => {
+            area.addEventListener('dragover', e => e.preventDefault());
+            area.addEventListener('drop', e => {
+                e.preventDefault();
+                const itemId = e.dataTransfer.getData('text/plain');
+                const target = area.getAttribute('data-target');
+                fetch(`/?dragged_id=${itemId}&target=${target}`, { method: 'POST' }).then(() => location.reload());
+            });
+        });
+    });
+    </script>
+    """, unsafe_allow_html=True)
 
-    # Handle drop logic
-    if unopened_area and unopened_area.startswith("unopened_"):
-        item_id = int(unopened_area.split("_")[1])
-        row = unopened[unopened["id"] == item_id].iloc[0]
-        df = update_quantity(df, row["index"], -1)
-        match = df[(df["type"] == row["type"]) & (df["material"] == row["material"]) & (df["color"] == row["color"]) & (df["status"] == "opened")]
-        if not match.empty:
-            df.at[match.index[0], "count"] += 1
-        else:
-            new_row = row.copy()
-            new_row["status"] = "opened"
-            new_row["count"] = 1
-            new_row["id"] = len(df) + 1
-            df = pd.concat([df, pd.DataFrame([new_row.drop(labels=["index"])])], ignore_index=True)
-        save_data(sheet, df)
-        st.rerun()
+    middle.markdown("## 🟨 Opened")
+    middle.markdown(f"<div class='droppable' data-target='used'>", unsafe_allow_html=True)
+    for _, row in opened.iterrows():
+        middle.markdown(render_color_block(f"opened_{row['id']}", row["color"], row["count"]), unsafe_allow_html=True)
+    middle.markdown("</div>", unsafe_allow_html=True)
 
-    if used_area and used_area.startswith("opened_"):
-        item_id = int(used_area.split("_")[1])
-        row = opened[opened["id"] == item_id].iloc[0]
-        df = update_quantity(df, row["index"], -1)
-        save_data(sheet, df)
-        st.rerun()
+    right.markdown("## 🟩 Unopened")
+    right.markdown(f"<div class='droppable' data-target='opened'>", unsafe_allow_html=True)
+    for _, row in unopened.iterrows():
+        right.markdown(render_color_block(f"unopened_{row['id']}", row["color"], row["count"]), unsafe_allow_html=True)
+    right.markdown("</div>", unsafe_allow_html=True)
+
+    # Handle drag-and-drop interaction
+    query_params = st.experimental_get_query_params()
+    dragged_id = query_params.get("dragged_id", [None])[0]
+    target = query_params.get("target", [None])[0]
+
+    if dragged_id and target:
+        if dragged_id.startswith("unopened_") and target == "opened":
+            item_id = int(dragged_id.split("_")[1])
+            row = unopened[unopened["id"] == item_id].iloc[0]
+            df = update_quantity(df, row["index"], -1)
+            match = df[(df["type"] == row["type"]) & (df["material"] == row["material"]) & (df["color"] == row["color"]) & (df["status"] == "opened")]
+            if not match.empty:
+                df.at[match.index[0], "count"] += 1
+            else:
+                new_row = row.copy()
+                new_row["status"] = "opened"
+                new_row["count"] = 1
+                new_row["id"] = len(df) + 1
+                df = pd.concat([df, pd.DataFrame([new_row.drop(labels=["index"])])], ignore_index=True)
+            save_data(sheet, df)
+            st.experimental_set_query_params()
+            st.rerun()
+
+        elif dragged_id.startswith("opened_") and target == "used":
+            item_id = int(dragged_id.split("_")[1])
+            row = opened[opened["id"] == item_id].iloc[0]
+            df = update_quantity(df, row["index"], -1)
+            save_data(sheet, df)
+            st.experimental_set_query_params()
+            st.rerun()
 
 if __name__ == "__main__":
     main()
