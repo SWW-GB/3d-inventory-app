@@ -144,7 +144,7 @@ def main():
     right.markdown("</div>", unsafe_allow_html=True)
 
     # Handle drag-and-drop interaction
-    query_params = st.experimental_get_query_params()
+    query_params = st.query_params
     dragged_id = query_params.get("dragged_id", [None])[0]
     target = query_params.get("target", [None])[0]
 
@@ -163,7 +163,7 @@ def main():
                 new_row["id"] = len(df) + 1
                 df = pd.concat([df, pd.DataFrame([new_row.drop(labels=["index"])])], ignore_index=True)
             save_data(sheet, df)
-            st.experimental_set_query_params()
+            st.query_params.clear()
             st.rerun()
 
         elif dragged_id.startswith("opened_") and target == "used":
