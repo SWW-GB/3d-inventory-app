@@ -76,19 +76,17 @@ def main():
             st.rerun()
 
     if st.session_state.selected_type is None:
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-    st.markdown("<div style='display: flex; justify-content: center; gap: 2rem;'>", unsafe_allow_html=True)
-    if st.button("🎛️ Filament"):
-        st.session_state.selected_type = "filament"
-        st.rerun()
-    if st.button("🧪 Resin"):
-        st.session_state.selected_type = "resin"
-        st.rerun()
-    st.markdown("</div>", unsafe_allow_html=True)
-
-        
-        return
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.markdown("<div style='display: flex; flex-direction: column; align-items: center; gap: 2rem;'>", unsafe_allow_html=True)
+        if st.button("🎛️ Filament"):
+            st.session_state.selected_type = "filament"
+            st.rerun()
+        if st.button("🧪 Resin"):
+            st.session_state.selected_type = "resin"
+            st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
+    return
 
     selected_type = st.session_state.selected_type
     filtered_df = df[df["type"] == selected_type].copy()
