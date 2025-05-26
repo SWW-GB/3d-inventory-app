@@ -3,6 +3,7 @@ import pandas as pd
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import json
+from streamlit_dragzone import dragzone
 
 # Google Sheets setup
 def get_gsheet(sheet_name):
@@ -27,15 +28,6 @@ def main():
     st.set_page_config(layout="wide")
     st.markdown("""
         <style>
-        .centered-buttons div[data-testid="column"] {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        .stButton > button {
-            font-size: 32px !important;
-            padding: 30px 60px !important;
-        }
         .material-box {
             display: inline-block;
             border: 1px solid #000;
@@ -46,25 +38,13 @@ def main():
             font-weight: bold;
             margin: 10px;
             padding: 5px;
-            cursor: pointer;
-        }
-        .selected-box {
-            outline: 3px solid black;
-        }
-        .go-back-button button {
-            padding: 4px 10px !important;
-            font-size: 14px !important;
-        }
-        .column-divider {
-            border-right: 2px solid #ccc;
-            padding-right: 20px;
         }
         </style>
     """, unsafe_allow_html=True)
 
     st.markdown("<h1 style='text-align: center;'>🧵 3D Printer Inventory Tracker</h1>", unsafe_allow_html=True)
 
-    for key in ["selected_type", "selected_opened_id", "selected_unopened_id"]:
+    for key in ["selected_type"]:
         if key not in st.session_state:
             st.session_state[key] = None
 
@@ -72,8 +52,6 @@ def main():
     with top_right:
         if st.session_state.selected_type and st.button("🔙 Go Back", key="go_back", help="Return to main menu"):
             st.session_state.selected_type = None
-            st.session_state.selected_opened_id = None
-            st.session_state.selected_unopened_id = None
             st.rerun()
 
     if st.session_state.selected_type is None:
@@ -101,8 +79,8 @@ def main():
         unopened = pd.DataFrame()
         st.info("No materials found. Use the form on the left to add some!")
     else:
-        opened = filtered_df[filtered_df["status"] == "opened"].reset_index()
-        unopened = filtered_df[filtered_df["status"] == "unopened"].reset_index()
+        opened = filtered_df[filtered_df["status"] == "opened"].reset_index(drop=True)
+        unopened = filtered_df[filtered_df["status"] == "unopened"].reset_index(drop=True)
 
     left, mid_raw, right_raw = st.columns([1, 2, 2])
 
@@ -137,65 +115,62 @@ def main():
                 st.success("Material added successfully.")
                 st.rerun()
 
-    def display_material_boxes(dataframe, status):
-        rows = [dataframe[i:i+3] for i in range(0, len(dataframe), 3)]
-        for row in rows:
-            cols = st.columns(3)
-            for box_data, col in zip(row.iterrows(), cols):
-                i, material = box_data
-                selected = material['id'] == st.session_state.get(f'selected_{status}_id')
-                btn_label = f"""
-                    <div class='material-box{' selected-box' if selected else ''}' style='background:{material['color']};'>
-                        <div style='font-size:12px;'>{material['material']}</div>
-                        <div style='font-size:24px; line-height:32px;'>{material['count']}</div>
-                        <div style='font-size:10px;'>{material['color']}</div>
-                    </div>
-                """
-                with col:
-                    if st.button(btn_label, key=f"{status}_box_{material['id']}", help="Click to select", use_container_width=True):
-                        st.session_state.selected_opened_id = material['id'] if status == "opened" else None
-                        st.session_state.selected_unopened_id = material['id'] if status == "unopened" else None
-                        st.rerun()
+    def material_to_dragitem(row):
+        return {
+            "id": str(row["id"]),
+            "child": f"""
+            <div class='material-box' style='background:{row['color']}'>
+                <div>{row['material']}</div>
+                <div>{row['count']}</div>
+                <div>{row['color']}</div>
+            </div>
+            """
+        }
 
     with mid_raw:
-        st.markdown("<div class='column-divider'><h3>🟨 Opened</h3>", unsafe_allow_html=True)
-        display_material_boxes(opened, "opened")
-        if st.session_state.selected_opened_id and st.button("Mark One as Used"):
-            idx = df[df["id"] == st.session_state.selected_opened_id].index[0]
-            df.at[idx, "count"] -= 1
-            if df.at[idx, "count"] < 0:
-                df.at[idx, "count"] = 0
-            st.session_state.selected_opened_id = None
-            save_data(sheet, df)
-            st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown("<h3>🟨 Opened</h3>", unsafe_allow_html=True)
+        opened_items = [material_to_dragitem(row) for _, row in opened.iterrows()]
+        opened_zone = dragzone("opened_zone", items=opened_items)
 
     with right_raw:
-        st.markdown("<div class='column-divider'><h3>🟩 Unopened</h3>", unsafe_allow_html=True)
-        display_material_boxes(unopened, "unopened")
-        if st.session_state.selected_unopened_id and st.button("Mark One as Opened"):
-            idx = df[df["id"] == st.session_state.selected_unopened_id].index[0]
-            selected = df.loc[idx]
-            df.at[idx, "count"] -= 1
-            if df.at[idx, "count"] < 0:
-                df.at[idx, "count"] = 0
-            match = df[(df["type"] == selected["type"]) &
-                       (df["material"] == selected["material"]) &
-                       (df["color"] == selected["color"]) &
-                       (df["status"] == "opened")]
-            if not match.empty:
-                df.at[match.index[0], "count"] += 1
-            else:
-                new_opened = selected.copy()
-                new_opened["status"] = "opened"
-                new_opened["count"] = 1
-                new_opened["id"] = len(df) + 1
-                df = pd.concat([df, pd.DataFrame([new_opened])], ignore_index=True)
-            st.session_state.selected_unopened_id = None
-            st.session_state.selected_opened_id = None
-            save_data(sheet, df)
-            st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown("<h3>🟩 Unopened</h3>", unsafe_allow_html=True)
+        unopened_items = [material_to_dragitem(row) for _, row in unopened.iterrows()]
+        unopened_zone = dragzone("unopened_zone", items=unopened_items)
+
+    st.markdown("<h3>🗑️ Used</h3>", unsafe_allow_html=True)
+    used_zone = dragzone("used_zone")
+
+    # Handle just dropped
+    if unopened_zone.get("just_dropped"):
+        dropped_id = int(unopened_zone["just_dropped"]["id"])
+        idx = df[df["id"] == dropped_id].index[0]
+        df.at[idx, "count"] -= 1
+        if df.at[idx, "count"] < 0:
+            df.at[idx, "count"] = 0
+        selected = df.loc[idx]
+        match = df[(df["type"] == selected["type"]) &
+                   (df["material"] == selected["material"]) &
+                   (df["color"] == selected["color"]) &
+                   (df["status"] == "opened")]
+        if not match.empty:
+            df.at[match.index[0], "count"] += 1
+        else:
+            new_opened = selected.copy()
+            new_opened["status"] = "opened"
+            new_opened["count"] = 1
+            new_opened["id"] = len(df) + 1
+            df = pd.concat([df, pd.DataFrame([new_opened])], ignore_index=True)
+        save_data(sheet, df)
+        st.rerun()
+
+    if used_zone.get("just_dropped"):
+        dropped_id = int(used_zone["just_dropped"]["id"])
+        idx = df[df["id"] == dropped_id].index[0]
+        df.at[idx, "count"] -= 1
+        if df.at[idx, "count"] <= 0:
+            df = df.drop(index=idx).reset_index(drop=True)
+        save_data(sheet, df)
+        st.rerun()
 
 if __name__ == "__main__":
     main()
