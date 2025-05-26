@@ -36,6 +36,21 @@ def main():
             font-size: 32px !important;
             padding: 30px 60px !important;
         }
+        .material-box {
+            display: inline-block;
+            border: 1px solid #000;
+            width: 100px;
+            height: 100px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: bold;
+            margin: 5px;
+            padding: 5px;
+            cursor: pointer;
+        }
+        .selected-box {
+            outline: 3px solid black;
+        }
         </style>
     """, unsafe_allow_html=True)
 
@@ -47,23 +62,30 @@ def main():
     if "selected_type" not in st.session_state:
         st.session_state.selected_type = None
 
+    if "selected_opened_id" not in st.session_state:
+        st.session_state.selected_opened_id = None
+
+    if "selected_unopened_id" not in st.session_state:
+        st.session_state.selected_unopened_id = None
+
     top_left, top_right = st.columns([8, 1])
     with top_right:
         if st.session_state.selected_type is not None and st.button("🔙 Go Back"):
             st.session_state.selected_type = None
+            st.session_state.selected_opened_id = None
+            st.session_state.selected_unopened_id = None
             st.rerun()
 
     if st.session_state.selected_type is None:
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            st.markdown("<div style='display: flex; flex-direction: column; align-items: center; gap: 2rem;'>", unsafe_allow_html=True)
+        col1, col2 = st.columns([1, 1])
+        with col1:
             if st.button("🎛️ Filament"):
                 st.session_state.selected_type = "filament"
                 st.rerun()
+        with col2:
             if st.button("🧪 Resin"):
                 st.session_state.selected_type = "resin"
                 st.rerun()
-            st.markdown("</div>", unsafe_allow_html=True)
         return
 
     selected_type = st.session_state.selected_type
@@ -102,29 +124,44 @@ def main():
     with middle:
         st.markdown("## 🟨 Opened")
         for _, row in opened.iterrows():
-            st.markdown(f"<div style='background:{row['color']};border:1px solid #000;width:100px;height:100px;border-radius:10px;text-align:center;font-weight:bold;margin:5px;padding:5px;'>"
-                        f"<div style='font-size:12px;'>{row['material']}</div>"
-                        f"<div style='line-height:60px;font-size:24px;'>{row['count']}</div></div>", unsafe_allow_html=True)
-        if not opened.empty:
-            selected = st.selectbox("Select opened material to mark as used:", opened.index.tolist(),
-                                     format_func=lambda i: f"{opened.loc[i, 'material']} ({opened.loc[i, 'color']}) - {opened.loc[i, 'count']}x")
+            selected_class = " selected-box" if row['id'] == st.session_state.selected_opened_id else ""
+            if st.button(f"opened_{row['id']}"):
+                st.session_state.selected_opened_id = row['id']
+                st.session_state.selected_unopened_id = None
+                st.rerun()
+            st.markdown(
+                f"<div class='material-box{selected_class}' style='background:{row['color']};'>"
+                f"<div style='font-size:12px;'>{row['material']}</div>"
+                f"<div style='line-height:60px;font-size:24px;'>{row['count']}</div></div>",
+                unsafe_allow_html=True
+            )
+        if st.session_state.selected_opened_id:
             if st.button("Mark One as Used"):
-                df.at[opened.loc[selected, 'index'], "count"] -= 1
+                idx = df[df["id"] == st.session_state.selected_opened_id].index[0]
+                df.at[idx, "count"] -= 1
                 save_data(sheet, df[df["count"] > 0])
+                st.session_state.selected_opened_id = None
                 st.rerun()
 
     with right:
         st.markdown("## 🟩 Unopened")
         for _, row in unopened.iterrows():
-            st.markdown(f"<div style='background:{row['color']};border:1px solid #000;width:100px;height:100px;border-radius:10px;text-align:center;font-weight:bold;margin:5px;padding:5px;'>"
-                        f"<div style='font-size:12px;'>{row['material']}</div>"
-                        f"<div style='line-height:60px;font-size:24px;'>{row['count']}</div></div>", unsafe_allow_html=True)
-        if not unopened.empty:
-            selection = st.selectbox("Select unopened material to mark as opened:", unopened.index.tolist(),
-                                     format_func=lambda i: f"{unopened.loc[i, 'material']} ({unopened.loc[i, 'color']}) - {unopened.loc[i, 'count']}x")
+            selected_class = " selected-box" if row['id'] == st.session_state.selected_unopened_id else ""
+            if st.button(f"unopened_{row['id']}"):
+                st.session_state.selected_unopened_id = row['id']
+                st.session_state.selected_opened_id = None
+                st.rerun()
+            st.markdown(
+                f"<div class='material-box{selected_class}' style='background:{row['color']};'>"
+                f"<div style='font-size:12px;'>{row['material']}</div>"
+                f"<div style='line-height:60px;font-size:24px;'>{row['count']}</div></div>",
+                unsafe_allow_html=True
+            )
+        if st.session_state.selected_unopened_id:
             if st.button("Mark One as Opened"):
-                selected = unopened.loc[selection]
-                df.at[selected["index"], "count"] -= 1
+                idx = df[df["id"] == st.session_state.selected_unopened_id].index[0]
+                selected = df.loc[idx]
+                df.at[idx, "count"] -= 1
                 match = df[(df["type"] == selected["type"]) &
                            (df["material"] == selected["material"]) &
                            (df["color"] == selected["color"]) &
@@ -138,6 +175,7 @@ def main():
                     new_opened["id"] = len(df) + 1
                     df = pd.concat([df, pd.DataFrame([new_opened])], ignore_index=True)
                 save_data(sheet, df[df["count"] > 0])
+                st.session_state.selected_unopened_id = None
                 st.rerun()
 
 if __name__ == "__main__":
