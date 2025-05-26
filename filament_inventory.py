@@ -137,7 +137,8 @@ def main():
             """
             with st.form(key=f"opened_form_{row['id']}"):
                 st.markdown(box_html, unsafe_allow_html=True)
-                if st.form_submit_button(label="", key=f"submit_opened_{row['id']}"):
+                submitted = st.form_submit_button(label="", key=f"submit_opened_{row['id']}")
+                if submitted:
                     st.session_state.selected_opened_id = row['id']
                     st.session_state.selected_unopened_id = None
                     st.rerun()
@@ -164,7 +165,8 @@ def main():
             """
             with st.form(key=f"unopened_form_{row['id']}"):
                 st.markdown(box_html, unsafe_allow_html=True)
-                if st.form_submit_button(label="", key=f"submit_unopened_{row['id']}"):
+                submitted = st.form_submit_button(label="", key=f"submit_unopened_{row['id']}")
+                if submitted:
                     st.session_state.selected_unopened_id = row['id']
                     st.session_state.selected_opened_id = None
                     st.rerun()
