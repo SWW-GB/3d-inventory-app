@@ -51,6 +51,10 @@ def main():
         .selected-box {
             outline: 3px solid black;
         }
+        .go-back-button button {
+            padding: 6px 12px !important;
+            font-size: 16px !important;
+        }
         </style>
     """, unsafe_allow_html=True)
 
@@ -67,11 +71,12 @@ def main():
     # Top navigation
     _, top_right = st.columns([8, 1])
     with top_right:
-        if st.session_state.selected_type and st.button("🔙 Go Back"):
-            st.session_state.selected_type = None
-            st.session_state.selected_opened_id = None
-            st.session_state.selected_unopened_id = None
-            st.rerun()
+        with st.container():
+            if st.session_state.selected_type and st.button("🔙 Go Back", key="go_back", help="Return to selection screen", type="primary"):
+                st.session_state.selected_type = None
+                st.session_state.selected_opened_id = None
+                st.session_state.selected_unopened_id = None
+                st.rerun()
 
     # Home screen selection
     if st.session_state.selected_type is None:
@@ -89,8 +94,14 @@ def main():
     # Load selected data
     selected_type = st.session_state.selected_type
     filtered_df = df[df["type"] == selected_type].copy()
-    opened = filtered_df[filtered_df["status"] == "opened"].reset_index()
-    unopened = filtered_df[filtered_df["status"] == "unopened"].reset_index()
+
+    if filtered_df.empty:
+        opened = pd.DataFrame()
+        unopened = pd.DataFrame()
+        st.info("No materials found. Use the form on the left to add some!")
+    else:
+        opened = filtered_df[filtered_df["status"] == "opened"].reset_index()
+        unopened = filtered_df[filtered_df["status"] == "unopened"].reset_index()
 
     left, middle, right = st.columns([1, 2, 2])
 
@@ -191,7 +202,6 @@ def main():
             st.session_state.selected_unopened_id = None
             st.session_state.selected_opened_id = None
             st.rerun()
-                
 
 if __name__ == "__main__":
     main()
