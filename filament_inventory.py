@@ -3,6 +3,7 @@ import pandas as pd
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import json
+from streamlit.components.v1 import html
 
 # Google Sheets setup
 def get_gsheet():
@@ -44,9 +45,9 @@ def main():
             justify-content: center;
             align-items: center;
         }
-        button[kind="primary"] {
-            font-size: 24px !important;
-            padding: 20px 40px !important;
+        .stButton > button {
+            font-size: 32px !important;
+            padding: 30px 60px !important;
         }
         .droppable {
             min-height: 200px;
@@ -60,7 +61,7 @@ def main():
         </style>
     """, unsafe_allow_html=True)
 
-    st.title("🧵 3D Printer Inventory Tracker")
+    st.markdown("<h1 style='text-align: center;'>🧵 3D Printer Inventory Tracker</h1>", unsafe_allow_html=True)
 
     sheet = get_gsheet()
     df = load_data(sheet)
@@ -93,6 +94,8 @@ def main():
     opened = filtered_df[filtered_df["status"] == "opened"].reset_index()
     unopened = filtered_df[filtered_df["status"] == "unopened"].reset_index()
 
+    st.markdown("<script>window.addEventListener('message', e => { const [id, target] = e.data.split('|'); const form = document.createElement('form'); form.method = 'POST'; form.action = `?dragged_id=${id}&target=${target}`; document.body.appendChild(form); form.submit(); });</script>", unsafe_allow_html=True)
+
     left, middle, right = st.columns([1, 2, 2])
 
     with left:
@@ -121,46 +124,18 @@ def main():
                 st.success("Material added successfully.")
                 st.rerun()
 
-    st.markdown("""
-    <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const draggables = document.querySelectorAll('.draggable');
-        const droppables = document.querySelectorAll('.droppable');
-
-        draggables.forEach(el => {
-            el.addEventListener('dragstart', e => {
-                e.dataTransfer.setData('text/plain', e.target.dataset.id);
-            });
-        });
-
-        droppables.forEach(area => {
-            area.addEventListener('dragover', e => e.preventDefault());
-            area.addEventListener('drop', e => {
-                e.preventDefault();
-                const itemId = e.dataTransfer.getData('text/plain');
-                const target = area.getAttribute('data-target');
-                fetch(`/?dragged_id=${itemId}&target=${target}`, { method: 'POST' }).then(() => location.reload());
-            });
-        });
-    });
-    </script>
-    """, unsafe_allow_html=True)
-
     middle.markdown("## 🟨 Opened")
-    middle.markdown("<div class='droppable' data-target='used'>", unsafe_allow_html=True)
+    html("""<div class='droppable' ondrop="window.parent.postMessage(event.dataTransfer.getData('text') + '|used', '*')" ondragover="event.preventDefault()">""")
     for _, row in opened.iterrows():
         middle.markdown(render_color_block(f"opened_{row['id']}", row["color"], row["count"], row["material"]), unsafe_allow_html=True)
-    middle.markdown("</div>", unsafe_allow_html=True)
-    middle.markdown("<p style='text-align:center;'>⬇️ Drag here to mark as used</p>", unsafe_allow_html=True)
+    html("""</div><p style='text-align:center;'>⬇️ Drag here to mark as used</p>""")
 
     right.markdown("## 🟩 Unopened")
-    right.markdown("<div class='droppable' data-target='opened'>", unsafe_allow_html=True)
+    html("""<div class='droppable' ondrop="window.parent.postMessage(event.dataTransfer.getData('text') + '|opened', '*')" ondragover="event.preventDefault()">""")
     for _, row in unopened.iterrows():
         right.markdown(render_color_block(f"unopened_{row['id']}", row["color"], row["count"], row["material"]), unsafe_allow_html=True)
-    right.markdown("</div>", unsafe_allow_html=True)
-    right.markdown("<p style='text-align:center;'>⬅️ Drag to open</p>", unsafe_allow_html=True)
+    html("""</div><p style='text-align:center;'>⬅️ Drag to open</p>""")
 
-    # Handle drag-and-drop interaction
     query_params = st.query_params
     dragged_id = query_params.get("dragged_id", [None])[0]
     target = query_params.get("target", [None])[0]
