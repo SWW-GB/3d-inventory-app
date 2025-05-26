@@ -6,7 +6,10 @@ from oauth2client.service_account import ServiceAccountCredentials
 # Google Sheets setup
 def get_gsheet():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
+    import json
+    creds_dict = json.loads(st.secrets["GOOGLE_CREDENTIALS"])
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+
     client = gspread.authorize(creds)
     sheet = client.open("3D Printer Inventory").worksheet("inventory")
     return sheet
