@@ -36,11 +36,6 @@ def main():
             font-size: 32px !important;
             padding: 30px 60px !important;
         }
-        .material-box-button {
-            background: none;
-            border: none;
-            padding: 0;
-        }
         .material-box {
             display: inline-block;
             border: 1px solid #000;
@@ -139,28 +134,33 @@ def main():
                 st.success("Material added successfully.")
                 st.rerun()
 
-    with middle:
-        st.markdown("## 🟨 Opened")
-        for i, row in opened.iterrows():
-            selected = row['id'] == st.session_state.selected_opened_id
-            button_clicked = st.button(
-                label=f" ",
-                key=f"opened_button_{row['id']}",
-                help=f"{row['material']} - {row['color']}",
-                args=(row['id'],),
-                use_container_width=True
-            )
-            st.markdown(f"""
-<div class='material-box{' selected-box' if selected else ''}' style='background:{row['color']};'>
+    def display_material_grid(dataframe, status):
+        cols = st.columns(3)
+        for i, row in dataframe.iterrows():
+            col = cols[i % 3]
+            with col:
+                if st.button(
+                    label=f"\n\n\n",
+                    key=f"{status}_button_{row['id']}",
+                    help=f"{row['material']} - {row['color']}",
+                ):
+                    if status == "opened":
+                        st.session_state.selected_opened_id = row['id']
+                        st.session_state.selected_unopened_id = None
+                    else:
+                        st.session_state.selected_unopened_id = row['id']
+                        st.session_state.selected_opened_id = None
+                    st.rerun()
+                st.markdown(f"""
+<div class='material-box{' selected-box' if row['id'] == st.session_state.get(f'selected_{status}_id') else ''}' style='background:{row['color']};'>
     <div style='font-size:12px;'>{row['material']}</div>
     <div style='line-height:60px;font-size:24px;'>{row['count']}</div>
 </div>
 """, unsafe_allow_html=True)
-            if button_clicked:
-                st.session_state.selected_opened_id = row['id']
-                st.session_state.selected_unopened_id = None
-                st.rerun()
 
+    with middle:
+        st.markdown("## 🟨 Opened")
+        display_material_grid(opened, "opened")
         if st.session_state.selected_opened_id and st.button("Mark One as Used"):
             idx = df[df["id"] == st.session_state.selected_opened_id].index[0]
             df.at[idx, "count"] -= 1
@@ -170,26 +170,7 @@ def main():
 
     with right:
         st.markdown("## 🟩 Unopened")
-        for i, row in unopened.iterrows():
-            selected = row['id'] == st.session_state.selected_unopened_id
-            button_clicked = st.button(
-                label=f" ",
-                key=f"unopened_button_{row['id']}",
-                help=f"{row['material']} - {row['color']}",
-                args=(row['id'],),
-                use_container_width=True
-            )
-            st.markdown(f"""
-<div class='material-box{' selected-box' if selected else ''}' style='background:{row['color']};'>
-    <div style='font-size:12px;'>{row['material']}</div>
-    <div style='line-height:60px;font-size:24px;'>{row['count']}</div>
-</div>
-""", unsafe_allow_html=True)
-            if button_clicked:
-                st.session_state.selected_unopened_id = row['id']
-                st.session_state.selected_opened_id = None
-                st.rerun()
-
+        display_material_grid(unopened, "unopened")
         if st.session_state.selected_unopened_id and st.button("Mark One as Opened"):
             idx = df[df["id"] == st.session_state.selected_unopened_id].index[0]
             selected = df.loc[idx]
