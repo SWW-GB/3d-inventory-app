@@ -37,6 +37,29 @@ def render_color_block(item_id, color, count, material):
 
 def main():
     st.set_page_config(layout="wide")
+    st.markdown("""
+        <style>
+        .centered-buttons div[data-testid="column"] {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        button[kind="primary"] {
+            font-size: 24px !important;
+            padding: 20px 40px !important;
+        }
+        .droppable {
+            min-height: 200px;
+            border: 2px dashed #ccc;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+        .draggable {
+            cursor: grab;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
     st.title("🧵 3D Printer Inventory Tracker")
 
     sheet = get_gsheet()
@@ -52,7 +75,8 @@ def main():
             st.rerun()
 
     if st.session_state.selected_type is None:
-        col1, col2 = st.columns(2)
+        st.markdown("<div class='centered-buttons'>", unsafe_allow_html=True)
+        col1, col2 = st.columns([1, 1])
         with col1:
             if st.button("🎛️ Filament"):
                 st.session_state.selected_type = "filament"
@@ -61,6 +85,7 @@ def main():
             if st.button("🧪 Resin"):
                 st.session_state.selected_type = "resin"
                 st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
         return
 
     selected_type = st.session_state.selected_type
@@ -97,17 +122,6 @@ def main():
                 st.rerun()
 
     st.markdown("""
-    <style>
-    .droppable {
-        min-height: 200px;
-        border: 2px dashed #ccc;
-        padding: 10px;
-        margin-bottom: 20px;
-    }
-    .draggable {
-        cursor: grab;
-    }
-    </style>
     <script>
     document.addEventListener('DOMContentLoaded', function () {
         const draggables = document.querySelectorAll('.draggable');
@@ -133,16 +147,18 @@ def main():
     """, unsafe_allow_html=True)
 
     middle.markdown("## 🟨 Opened")
-    middle.markdown(f"<div class='droppable' data-target='used'>", unsafe_allow_html=True)
+    middle.markdown("<div class='droppable' data-target='used'>", unsafe_allow_html=True)
     for _, row in opened.iterrows():
         middle.markdown(render_color_block(f"opened_{row['id']}", row["color"], row["count"], row["material"]), unsafe_allow_html=True)
     middle.markdown("</div>", unsafe_allow_html=True)
+    middle.markdown("<p style='text-align:center;'>⬇️ Drag here to mark as used</p>", unsafe_allow_html=True)
 
     right.markdown("## 🟩 Unopened")
-    right.markdown(f"<div class='droppable' data-target='opened'>", unsafe_allow_html=True)
+    right.markdown("<div class='droppable' data-target='opened'>", unsafe_allow_html=True)
     for _, row in unopened.iterrows():
         right.markdown(render_color_block(f"unopened_{row['id']}", row["color"], row["count"], row["material"]), unsafe_allow_html=True)
     right.markdown("</div>", unsafe_allow_html=True)
+    right.markdown("<p style='text-align:center;'>⬅️ Drag to open</p>", unsafe_allow_html=True)
 
     # Handle drag-and-drop interaction
     query_params = st.query_params
