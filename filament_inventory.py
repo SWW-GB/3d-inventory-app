@@ -59,23 +59,21 @@ def main():
     sheet = get_gsheet()
     df = load_data(sheet)
 
-    if "selected_type" not in st.session_state:
-        st.session_state.selected_type = None
+    # Session state setup
+    for key in ["selected_type", "selected_opened_id", "selected_unopened_id"]:
+        if key not in st.session_state:
+            st.session_state[key] = None
 
-    if "selected_opened_id" not in st.session_state:
-        st.session_state.selected_opened_id = None
-
-    if "selected_unopened_id" not in st.session_state:
-        st.session_state.selected_unopened_id = None
-
-    top_left, top_right = st.columns([8, 1])
+    # Top navigation
+    _, top_right = st.columns([8, 1])
     with top_right:
-        if st.session_state.selected_type is not None and st.button("🔙 Go Back"):
+        if st.session_state.selected_type and st.button("🔙 Go Back"):
             st.session_state.selected_type = None
             st.session_state.selected_opened_id = None
             st.session_state.selected_unopened_id = None
             st.rerun()
 
+    # Home screen selection
     if st.session_state.selected_type is None:
         col1, col2 = st.columns([1, 1])
         with col1:
@@ -88,6 +86,7 @@ def main():
                 st.rerun()
         return
 
+    # Load selected data
     selected_type = st.session_state.selected_type
     filtered_df = df[df["type"] == selected_type].copy()
     opened = filtered_df[filtered_df["status"] == "opened"].reset_index()
@@ -95,13 +94,15 @@ def main():
 
     left, middle, right = st.columns([1, 2, 2])
 
+    # Add New Material
     with left:
         st.markdown(f"### ➕ Add New {selected_type.title()}")
         with st.form("add_form"):
-            if selected_type == "filament":
-                f_type = st.selectbox("Type", ["PLA", "PETG", "ABS", "Support", "TPU", "PLA-CF", "PETG-CF"], index=0)
-            else:
-                f_type = st.selectbox("Type", ["basic", "tough", "rigid", "flexible"], index=0)
+            material_type = st.selectbox(
+                "Type",
+                ["PLA", "PETG", "ABS", "Support", "TPU", "PLA-CF", "PETG-CF"] if selected_type == "filament" else ["basic", "tough", "rigid", "flexible"],
+                index=0
+            )
             color = st.text_input("Color")
             count = st.number_input("Quantity", min_value=1, step=1)
             submitted = st.form_submit_button("Add Material")
@@ -109,7 +110,7 @@ def main():
                 new_entry = {
                     "id": len(df) + 1,
                     "type": selected_type,
-                    "material": f_type,
+                    "material": material_type,
                     "brand": "",
                     "color": color,
                     "status": "unopened",
@@ -121,16 +122,17 @@ def main():
                 st.success("Material added successfully.")
                 st.rerun()
 
+    # Opened Section
     with middle:
         st.markdown("## 🟨 Opened")
         for _, row in opened.iterrows():
-            selected_class = " selected-box" if row['id'] == st.session_state.selected_opened_id else ""
+            selected = row['id'] == st.session_state.selected_opened_id
             box_html = f"""
             <button style='all: unset;' type='submit' name='opened_id' value='{row['id']}'>
-            <div class='material-box{selected_class}' style='background:{row['color']};'>
-                <div style='font-size:12px;'>{row['material']}</div>
-                <div style='line-height:60px;font-size:24px;'>{row['count']}</div>
-            </div>
+                <div class='material-box{' selected-box' if selected else ''}' style='background:{row['color']};'>
+                    <div style='font-size:12px;'>{row['material']}</div>
+                    <div style='line-height:60px;font-size:24px;'>{row['count']}</div>
+                </div>
             </button>
             """
             with st.form(key=f"opened_form_{row['id']}"):
@@ -140,25 +142,24 @@ def main():
                     st.session_state.selected_unopened_id = None
                     st.rerun()
 
-                
-        if st.session_state.selected_opened_id:
-            if st.button("Mark One as Used"):
-                idx = df[df["id"] == st.session_state.selected_opened_id].index[0]
-                df.at[idx, "count"] -= 1
-                save_data(sheet, df[df["count"] > 0])
-                st.session_state.selected_opened_id = None
-                st.rerun()
+        if st.session_state.selected_opened_id and st.button("Mark One as Used"):
+            idx = df[df["id"] == st.session_state.selected_opened_id].index[0]
+            df.at[idx, "count"] -= 1
+            save_data(sheet, df[df["count"] > 0])
+            st.session_state.selected_opened_id = None
+            st.rerun()
 
+    # Unopened Section
     with right:
         st.markdown("## 🟩 Unopened")
         for _, row in unopened.iterrows():
-            selected_class = " selected-box" if row['id'] == st.session_state.selected_unopened_id else ""
+            selected = row['id'] == st.session_state.selected_unopened_id
             box_html = f"""
             <button style='all: unset;' type='submit' name='unopened_id' value='{row['id']}'>
-            <div class='material-box{selected_class}' style='background:{row['color']};'>
-                <div style='font-size:12px;'>{row['material']}</div>
-                <div style='line-height:60px;font-size:24px;'>{row['count']}</div>
-            </div>
+                <div class='material-box{' selected-box' if selected else ''}' style='background:{row['color']};'>
+                    <div style='font-size:12px;'>{row['material']}</div>
+                    <div style='line-height:60px;font-size:24px;'>{row['count']}</div>
+                </div>
             </button>
             """
             with st.form(key=f"unopened_form_{row['id']}"):
@@ -168,31 +169,25 @@ def main():
                     st.session_state.selected_opened_id = None
                     st.rerun()
 
-                f"<div class='material-box{selected_class}' style='background:{row['color']};'>"
-                f"<div style='font-size:12px;'>{row['material']}</div>"
-                f"<div style='line-height:60px;font-size:24px;'>{row['count']}</div></div>",
-                unsafe_allow_html=True
-            )
-        if st.session_state.selected_unopened_id:
-            if st.button("Mark One as Opened"):
-                idx = df[df["id"] == st.session_state.selected_unopened_id].index[0]
-                selected = df.loc[idx]
-                df.at[idx, "count"] -= 1
-                match = df[(df["type"] == selected["type"]) &
-                           (df["material"] == selected["material"]) &
-                           (df["color"] == selected["color"]) &
-                           (df["status"] == "opened")]
-                if not match.empty:
-                    df.at[match.index[0], "count"] += 1
-                else:
-                    new_opened = selected.copy()
-                    new_opened["status"] = "opened"
-                    new_opened["count"] = 1
-                    new_opened["id"] = len(df) + 1
-                    df = pd.concat([df, pd.DataFrame([new_opened])], ignore_index=True)
-                save_data(sheet, df[df["count"] > 0])
-                st.session_state.selected_unopened_id = None
-                st.rerun()
+        if st.session_state.selected_unopened_id and st.button("Mark One as Opened"):
+            idx = df[df["id"] == st.session_state.selected_unopened_id].index[0]
+            selected = df.loc[idx]
+            df.at[idx, "count"] -= 1
+            match = df[(df["type"] == selected["type"]) &
+                       (df["material"] == selected["material"]) &
+                       (df["color"] == selected["color"]) &
+                       (df["status"] == "opened")]
+            if not match.empty:
+                df.at[match.index[0], "count"] += 1
+            else:
+                new_opened = selected.copy()
+                new_opened["status"] = "opened"
+                new_opened["count"] = 1
+                new_opened["id"] = len(df) + 1
+                df = pd.concat([df, pd.DataFrame([new_opened])], ignore_index=True)
+            save_data(sheet, df[df["count"] > 0])
+            st.session_state.selected_unopened_id = None
+            st.rerun()
 
 if __name__ == "__main__":
     main()
