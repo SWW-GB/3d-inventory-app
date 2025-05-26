@@ -77,15 +77,17 @@ def main():
 
     # Home screen selection
     if st.session_state.selected_type is None:
-        col1, col2 = st.columns([1, 1])
-        with col1:
-            if st.button("🎛️ Filament"):
-                st.session_state.selected_type = "filament"
-                st.rerun()
+        col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
-            if st.button("🧪 Resin"):
-                st.session_state.selected_type = "resin"
-                st.rerun()
+            col2a, col2b = st.columns(2)
+            with col2a:
+                if st.button("🎛️ Filament"):
+                    st.session_state.selected_type = "filament"
+                    st.rerun()
+            with col2b:
+                if st.button("🧪 Resin"):
+                    st.session_state.selected_type = "resin"
+                    st.rerun()
         return
 
     # Get sheet based on selected type
