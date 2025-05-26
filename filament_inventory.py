@@ -191,14 +191,7 @@ def main():
             st.session_state.selected_unopened_id = None
             st.session_state.selected_opened_id = None
             st.rerun()
-                new_opened = selected.copy()
-                new_opened["status"] = "opened"
-                new_opened["count"] = 1
-                new_opened["id"] = len(df) + 1
-                df = pd.concat([df, pd.DataFrame([new_opened])], ignore_index=True)
-            save_data(sheet, df[df["count"] > 0])
-            st.session_state.selected_unopened_id = None
-            st.rerun()
+                
 
 if __name__ == "__main__":
     main()
