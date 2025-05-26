@@ -76,17 +76,21 @@ def main():
             st.rerun()
 
     if st.session_state.selected_type is None:
-        st.markdown("<div class='centered-buttons'>", unsafe_allow_html=True)
-        col1, col2 = st.columns([1, 1])
-        with col1:
-            if st.button("🎛️ Filament"):
-                st.session_state.selected_type = "filament"
-                st.rerun()
-        with col2:
-            if st.button("🧪 Resin"):
-                st.session_state.selected_type = "resin"
-                st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown("""
+        <div style='display: flex; justify-content: center; align-items: center; gap: 2rem;'>
+            <form action='' method='post'>
+                <button name='type' value='filament' style='font-size: 32px; padding: 30px 60px;'>🎛️ Filament</button>
+            </form>
+            <form action='' method='post'>
+                <button name='type' value='resin' style='font-size: 32px; padding: 30px 60px;'>🧪 Resin</button>
+            </form>
+        </div>
+    """, unsafe_allow_html=True)
+
+        if st.query_params.get("type"):
+            st.session_state.selected_type = st.query_params["type"]
+            st.query_params.clear()
+            st.rerun()
         return
 
     selected_type = st.session_state.selected_type
@@ -94,7 +98,17 @@ def main():
     opened = filtered_df[filtered_df["status"] == "opened"].reset_index()
     unopened = filtered_df[filtered_df["status"] == "unopened"].reset_index()
 
-    st.markdown("<script>window.addEventListener('message', e => { const [id, target] = e.data.split('|'); const form = document.createElement('form'); form.method = 'POST'; form.action = `?dragged_id=${id}&target=${target}`; document.body.appendChild(form); form.submit(); });</script>", unsafe_allow_html=True)
+    st.markdown("""
+    <script>
+    window.addEventListener('message', e => {
+        const [id, target] = e.data.split('|');
+        const url = new URL(window.location.href);
+        url.searchParams.set('dragged_id', id);
+        url.searchParams.set('target', target);
+        window.location.href = url.toString();
+    });
+    </script>
+    """, unsafe_allow_html=True)
 
     left, middle, right = st.columns([1, 2, 2])
 
