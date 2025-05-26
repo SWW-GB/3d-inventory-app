@@ -162,8 +162,10 @@ def main():
         if st.session_state.selected_opened_id and st.button("Mark One as Used"):
             idx = df[df["id"] == st.session_state.selected_opened_id].index[0]
             df.at[idx, "count"] -= 1
-            save_data(sheet, df[df["count"] > 0])
+            if df.at[idx, "count"] < 0:
+                df.at[idx, "count"] = 0
             st.session_state.selected_opened_id = None
+            save_data(sheet, df)
             st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -174,6 +176,8 @@ def main():
             idx = df[df["id"] == st.session_state.selected_unopened_id].index[0]
             selected = df.loc[idx]
             df.at[idx, "count"] -= 1
+            if df.at[idx, "count"] < 0:
+                df.at[idx, "count"] = 0
             match = df[(df["type"] == selected["type"]) &
                        (df["material"] == selected["material"]) &
                        (df["color"] == selected["color"]) &
@@ -186,9 +190,9 @@ def main():
                 new_opened["count"] = 1
                 new_opened["id"] = len(df) + 1
                 df = pd.concat([df, pd.DataFrame([new_opened])], ignore_index=True)
-            save_data(sheet, df[df["count"] > 0])
             st.session_state.selected_unopened_id = None
             st.session_state.selected_opened_id = None
+            save_data(sheet, df)
             st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
 
