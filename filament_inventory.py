@@ -58,7 +58,6 @@ def main():
         .column-divider {
             border-right: 2px solid #ccc;
             padding-right: 20px;
-            min-height: 100%;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -152,7 +151,8 @@ def main():
                     st.markdown(f"""
 <div class='material-box{' selected-box' if row['id'] == st.session_state.get(f'selected_{status}_id') else ''}' style='background:{row['color']};'>
     <div style='font-size:12px;'>{row['material']}</div>
-    <div style='line-height:60px;font-size:24px;'>{row['count']}</div>
+    <div style='font-size:24px; line-height:32px;'>{row['count']}</div>
+    <div style='font-size:10px;'>{row['color']}</div>
 </div>
 """, unsafe_allow_html=True)
 
